@@ -2,10 +2,6 @@ const std = @import("std");
 const chrm = @import("chromosome.zig");
 const ga = @import("ga.zig");
 
-pub const std_options = .{
-    .log_level = .info,
-};
-
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
@@ -16,13 +12,13 @@ pub fn main() !void {
     }
 
     var genetic_algorithm = try ga.buildGeneticAlgorithm(16, 400, allocator);
-    defer genetic_algorithm.deinit();
+    defer genetic_algorithm.deinit(allocator);
     const best_chromosome = try genetic_algorithm.runAlgorithm(allocator);
     const worst_chromosome = genetic_algorithm.getWorstChromosome();
 
-    const stdout_file = std.io.getStdOut().writer();
-    var bw = std.io.bufferedWriter(stdout_file);
-    const stdout = bw.writer();
+    var stdout_buffer: [1024]u8 = undefined;
+    var stdout_writer = std.fs.File.stdout().writer(&stdout_buffer);
+    const stdout = &stdout_writer.interface;
 
     try stdout.print("population: {any}\n", .{genetic_algorithm.population.items.len});
     try stdout.print("--------------------------------\n", .{});
@@ -37,7 +33,7 @@ pub fn main() !void {
     try stdout.print("  conflicts     = {any}\n", .{worst_chromosome.conflicts.items});
     try stdout.print("  conflicts_sum = {any}\n", .{worst_chromosome.conflicts_sum});
     try stdout.print("  fitness       = {any}\n", .{worst_chromosome.fitness});
-    try bw.flush();
+    try stdout.flush();
 }
 
 test "random slice order test" {
@@ -45,7 +41,7 @@ test "random slice order test" {
     const rand = std.crypto.random;
     const slice: []const u16 = &.{ 0, 1, 2, 3, 4, 5, 6, 7 };
     var list = std.ArrayList(u16).init(test_allocator);
-    defer list.deinit();
+    defer list.deinit(test_allocator);
     try list.appendSlice(slice);
     const s = list.items;
     rand.shuffle(u16, s);
@@ -89,7 +85,7 @@ test "calculate fitness test" {
     var population = try std.ArrayList(chrm.Chromosome).initCapacity(test_allocator, 6);
     try population.appendSlice(&.{ chromosome_1, chromosome_2, chromosome_3, chromosome_4, chromosome_5, chromosome_6 });
     var genetic_algorithm = ga.GeneticAlgorithm.init(population);
-    defer genetic_algorithm.deinit();
+    defer genetic_algorithm.deinit(test_allocator);
     try genetic_algorithm.calcFitness();
     try std.testing.expectEqual(0.0, genetic_algorithm.getWorstChromosome().fitness);
     try std.testing.expectEqual(1.0, genetic_algorithm.getBestChromosome().fitness);

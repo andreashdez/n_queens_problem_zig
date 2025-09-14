@@ -20,9 +20,9 @@ pub const Chromosome = struct {
         };
     }
 
-    pub fn deinit(self: Chromosome) void {
-        self.positions.deinit();
-        self.conflicts.deinit();
+    pub fn deinit(self: *Chromosome, allocator: std.mem.Allocator) void {
+        self.positions.deinit(allocator);
+        self.conflicts.deinit(allocator);
     }
 };
 
@@ -31,7 +31,7 @@ pub fn generateDistRandVals(size: usize, allocator: std.mem.Allocator) !std.Arra
     var list = try std.ArrayList(u16).initCapacity(allocator, size);
     for (0..size) |i| {
         const element: u16 = @intCast(i);
-        try list.append(element);
+        try list.append(allocator, element);
     }
     rand.shuffle(u16, list.items);
     return list;
@@ -40,7 +40,7 @@ pub fn generateDistRandVals(size: usize, allocator: std.mem.Allocator) !std.Arra
 pub fn countConflicts(positions: std.ArrayList(u16), allocator: std.mem.Allocator) !std.ArrayList(u16) {
     const size = positions.items.len;
     var conflicts = try std.ArrayList(u16).initCapacity(allocator, size);
-    try conflicts.appendNTimes(0, size);
+    try conflicts.appendNTimes(allocator, 0, size);
     for (0..size - 1) |x_two| {
         for (x_two + 1..size) |x_one| {
             const distance = x_one - x_two;

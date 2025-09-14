@@ -10,11 +10,11 @@ pub const GeneticAlgorithm = struct {
     pub fn init(population: std.ArrayList(chrm.Chromosome)) GeneticAlgorithm {
         return GeneticAlgorithm{ .population = population };
     }
-    pub fn deinit(self: GeneticAlgorithm) void {
-        for (self.population.items) |chromosome| {
-            chromosome.deinit();
+    pub fn deinit(self: *GeneticAlgorithm, allocator: std.mem.Allocator) void {
+        for (self.population.items) |*chromosome| {
+            chromosome.deinit(allocator);
         }
-        self.population.deinit();
+        self.population.deinit(allocator);
     }
     pub fn getBestChromosome(self: GeneticAlgorithm) chrm.Chromosome {
         const pop = self.population.items;
@@ -69,7 +69,7 @@ pub const GeneticAlgorithm = struct {
             const parent_one = self.selectRandomChromosome(fitness_sum) orelse self.getBestChromosome();
             const parent_two = self.selectRandomChromosome(fitness_sum) orelse self.getWorstChromosome();
             const child = try mateChromosomes(parent_one, parent_two, allocator);
-            try self.population.append(child);
+            try self.population.append(allocator, child);
         }
     }
 
@@ -120,8 +120,8 @@ fn pmx(parent_one: std.ArrayList(u16), parent_two: std.ArrayList(u16), allocator
     const point_two = rand.intRangeAtMost(usize, chromosome_half_size, chromosome_size);
     std.log.debug("partially mapped crossover [point_one={any}, point_two={any}]", .{ point_one, point_two });
     var child_genes = try std.ArrayList(?u16).initCapacity(allocator, parent_one.items.len);
-    defer child_genes.deinit();
-    try child_genes.appendNTimes(null, parent_one.items.len);
+    defer child_genes.deinit(allocator);
+    try child_genes.appendNTimes(allocator, null, parent_one.items.len);
     for (point_one..point_two) |i| {
         child_genes.items[i] = parent_one.items[i];
     }
@@ -148,7 +148,7 @@ fn pmx(parent_one: std.ArrayList(u16), parent_two: std.ArrayList(u16), allocator
     var child_genes_result = try std.ArrayList(u16).initCapacity(allocator, parent_one.items.len);
     for (child_genes.items) |child_gene| {
         const child_gene_result = child_gene orelse unreachable;
-        try child_genes_result.append(child_gene_result);
+        try child_genes_result.append(allocator, child_gene_result);
     }
     return child_genes_result;
 }
@@ -162,7 +162,7 @@ pub fn buildGeneticAlgorithm(size: usize, initial_population: usize, allocator: 
     for (0..initial_population) |_| {
         const positions = try chrm.generateDistRandVals(size, allocator);
         const chromosome = try chrm.Chromosome.init(positions, allocator);
-        try population.append(chromosome);
+        try population.append(allocator, chromosome);
     }
     return GeneticAlgorithm.init(population);
 }
